@@ -196,6 +196,8 @@ public class CollectionController {
                                       @RequestParam String port,
                                       @RequestParam String collectionName,
                                       @RequestParam String action) throws IndexingJobFailureException, IOException {
+
+        logger.info("host: {}, port: {}, collectionName: {}, action: {}\n", host, port, collectionName, action);
         Map<String, Object> response = new HashMap<>();
 
         // Host 에러 처리
@@ -248,6 +250,8 @@ public class CollectionController {
             response.put("result", "fail");
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
+
+        logger.info("collection: {}", collection.toString());
 
         UUID clusterId = cluster.getId();
         String id = collection.getId();

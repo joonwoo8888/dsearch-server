@@ -332,6 +332,20 @@ public class CollectionController {
                     response.put("result", "fail");
                 }
             }
+        } else if ("source_ready".equalsIgnoreCase(action)) {
+            synchronized (obj) {
+                IndexingStatus registerStatus = indexingJobManager.findById(id);
+                if (registerStatus == null) {
+                    IndexingStatus indexingStatus = indexingJobService.indexing(clusterId, collection, false, IndexStep.FULL_INDEX);
+                    indexingJobManager.add(collection.getId(), indexingStatus);
+                    indexingStatus.setAction(action);
+                    indexingStatus.setStatus("RUNNING");
+                    response.put("indexingStatus", indexingStatus);
+                    response.put("result", "success");
+                } else {
+                    response.put("result", "fail");
+                }
+            }
         } else {
             response.put("message", "Not Found Action. Please Select Action in this list (all / indexing / propagate / expose / stop_indexing / stop_propagation)");
             response.put("result", "success");

@@ -72,6 +72,34 @@ public class IndexingJobService {
         return this.indexerJobManager;
     }
 
+    public IndexingStatus indexingSourceReady(UUID clusterId, Collection collection, String groupSeq) throws IndexingJobFailureException {
+        String indexingJobId;
+//            4. indexer 색인 전송
+        logger.debug("외부 인덱서 사용 여부 : {}", collection.isExtIndexer());
+        if (collection.isExtIndexer()) {
+            // 외부 인덱서를 사용할 경우 전송.
+            ResponseEntity<Map> responseEntity = restTemplate.exchange(
+                    new URI(String.format("%s://%s:%d/async/start", launcher.getScheme(), launcher.getHost(), launcher.getPort())),
+                    HttpMethod.POST,
+                    new HttpEntity(body),
+                    Map.class
+            );
+            if (responseEntity.getBody() == null) {
+                logger.warn("{}", responseEntity);
+                throw new NullPointerException("Indexer Start Failed!");
+            }
+            indexingJobId = (String) responseEntity.getBody().get("id");
+            indexingStatus.setScheme(launcher.getScheme());
+            indexingStatus.setHost(launcher.getHost());
+            indexingStatus.setPort(launcher.getPort());
+        } else {
+            // 서버 쓰래드 기반으로 색인 실행.
+            Job job = indexerJobManager.start(IndexerConfig.ACTION.FULL_INDEX.name(), body);
+            indexingJobId = job.getId().toString();
+        }
+
+        logger.info("Job ID: {}", indexingJobId);
+    }
     /**
      * 소스를 읽어들여 ES 색인에 입력하는 작업.
      * indexer를 외부 프로세스로 실행한다.

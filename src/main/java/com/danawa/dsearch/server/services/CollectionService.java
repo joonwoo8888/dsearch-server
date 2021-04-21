@@ -580,6 +580,7 @@ public class CollectionService {
                         if (indexingStatus != null) {
                             return;
                         }
+
                         Deque<IndexStep> nextStep = new ArrayDeque<>();
                         nextStep.add(IndexStep.PROPAGATE);
                         nextStep.add(IndexStep.EXPOSE);
@@ -615,5 +616,12 @@ public class CollectionService {
             }
         }
         return result;
+    }
+
+
+    public void getScheduleLists(UUID clusterId) {
+            for(String key: scheduled.keySet()){
+                logger.info("{}", key);
+            }
     }
 }

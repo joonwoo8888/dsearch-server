@@ -75,6 +75,7 @@ public class IndexingJobManager {
         if (jobs.size() == 0) {
             return;
         }
+
         Iterator<Map.Entry<String, IndexingStatus>> entryIterator = jobs.entrySet().iterator();
         entryIterator.forEachRemaining(entry -> {
             // key == collectionId
@@ -223,7 +224,6 @@ public class IndexingJobManager {
             Map<String, Object> body = responseEntity.getBody();
 
             // Null pointer Exception
-            logger.info("body: {}", body);
             if(body.get("status") != null) status = (String) body.get("status");
         } else {
             Job job = indexerJobManager.status(UUID.fromString(indexingStatus.getIndexingJobId()));

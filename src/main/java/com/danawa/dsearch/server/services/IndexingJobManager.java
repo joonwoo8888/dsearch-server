@@ -227,7 +227,7 @@ public class IndexingJobManager {
             if(body.get("status") != null) status = (String) body.get("status");
         } else {
             Job job = indexerJobManager.status(UUID.fromString(indexingStatus.getIndexingJobId()));
-            logger.info("job: {}", job);
+            logger.info("job is null : {}", job == null);
             if (job != null) {
                 status = job.getStatus();
             }
@@ -270,16 +270,18 @@ public class IndexingJobManager {
                 // 성공 로그
                 addLastIndexStatus(clusterId, indexingStatus.getCollection().getId(), index, indexingStatus.getStartTime(), "RUNNING", indexingStatus.getCurrentStep().name(), id);
 
+                indexingStatus.setCurrentStep(nextStep);
                 jobs.put(id, indexingStatus);
                 IndexingStatus idxStat = jobs.get(id);
                 idxStat.setStatus(status);
                 idxStat.setEndTime(System.currentTimeMillis());
                 indexingProcessQueue.put(id, idxStat);
                 logger.debug("next Step >> {}", nextStep);
-                indexingJobService.expose(clusterId, indexingStatus.getCollection(), indexingStatus.getIndex());
+//                indexingJobService.expose(clusterId, indexingStatus.getCollection(), indexingStatus.getIndex());
             } else if ("ERROR".equalsIgnoreCase(status) || "STOP".equalsIgnoreCase(status)) {
                 logger.info("Indexing {}, id: {}, indexingStatus: {}", status, id, indexingStatus.toString());
-                indexingJobService.expose(clusterId, indexingStatus.getCollection());
+                jobs.remove(id);
+//                indexingJobService.expose(clusterId, indexingStatus.getCollection());
             } else {
                 // 다음 작업이 없으면 제거.
                 IndexingStatus idxStat = jobs.get(id);

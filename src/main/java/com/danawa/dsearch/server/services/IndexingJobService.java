@@ -11,9 +11,14 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import com.google.gson.Gson;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeResponse;
+import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -30,6 +35,8 @@ import org.elasticsearch.client.tasks.CancelTasksRequest;
 import org.elasticsearch.client.tasks.CancelTasksResponse;
 import org.elasticsearch.client.tasks.TaskId;
 import org.elasticsearch.client.tasks.TaskSubmissionResponse;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -370,6 +377,7 @@ public class IndexingJobService {
     public IndexingStatus reindex(UUID clusterId, Collection collection, boolean autoRun, IndexStep step) throws IndexingJobFailureException, IOException {
         return reindex(clusterId, collection, autoRun, step, new ArrayDeque<>());
     }
+
     public IndexingStatus reindex(UUID clusterId, Collection collection, boolean autoRun, IndexStep step, Queue<IndexStep> nextStep) throws IndexingJobFailureException, IOException {
         IndexingStatus indexingStatus = new IndexingStatus();
         try (RestHighLevelClient client = elasticsearchFactory.getClient(clusterId)) {
@@ -408,6 +416,7 @@ public class IndexingJobService {
                     Collection.Launcher launcher = collection.getLauncher();
                     Map<String, Object> body = convertRequestParams(launcher.getYaml());
 
+                    // reindex에 필요한 파라미터 변환
                     // reindex 설정값 default
                     // 배치 사이즈 default : 1000
                     int reindexBatchSize = 1000;
@@ -441,21 +450,7 @@ public class IndexingJobService {
 
                     logger.debug("reindexBatchSize:{}, reindexSlices:{}, reindexRequestPerSecond:{}", reindexBatchSize, reindexSlices, reindexRequestPerSec);
 
-                    // reindex request 설정 세팅
-                    ReindexRequest reindexRequest = new ReindexRequest();
-                    if(reindexRequestPerSec > 0) reindexRequest.setRequestsPerSecond(reindexRequestPerSec); // 추가
-                    reindexRequest.setSourceIndices(sourceIndex.getIndex());
-                    reindexRequest.setDestIndex(destIndex.getIndex());
-                    reindexRequest.setRefresh(false);
-                    reindexRequest.setSourceBatchSize(reindexBatchSize);
-                    reindexRequest.setSlices(reindexSlices);
-
-                    // reindex 호출
-                    TaskSubmissionResponse reindexSubmission = client.submitReindexTask(reindexRequest, RequestOptions.DEFAULT);
-
-                    // 작업 번호
-                    String taskId = reindexSubmission.getTask();
-                    logger.info("taskId : {} - source : {} -> dest : {}", taskId, sourceIndex.getIndex(), destIndex.getIndex());
+                    String taskId = reformReindexing(client, collection.getBaseId(), sourceIndex.getIndex(), destIndex.getIndex(), reindexBatchSize, reindexRequestPerSec);
 
                     indexingStatus.setClusterId(clusterId);
                     indexingStatus.setIndex(destIndex.getIndex());
@@ -475,6 +470,113 @@ public class IndexingJobService {
             throw new IndexingJobFailureException(e);
         }
         return indexingStatus;
+    }
+
+    public boolean makeReadOnlyIndex(RestHighLevelClient client, String index, boolean flag) throws IOException, InterruptedException {
+        UpdateSettingsRequest updateSettingsRequest = new UpdateSettingsRequest();
+        updateSettingsRequest.indices(index);
+        updateSettingsRequest.settings(Settings.builder()
+                .put("index.blocks.write", flag)
+                .build());
+        AcknowledgedResponse response = client.indices().putSettings(updateSettingsRequest, RequestOptions.DEFAULT);
+        boolean ack = response.isAcknowledged();
+        while (ack) {
+            response = client.indices().putSettings(updateSettingsRequest, RequestOptions.DEFAULT);
+            ack = response.isAcknowledged();
+            Thread.sleep(500);
+        }
+        return ack;
+    }
+
+    public boolean cloneIndexing(RestHighLevelClient client, String sourceIndex, String cloneIndex) throws IOException {
+        ResizeRequest cloneRequest = new ResizeRequest(sourceIndex, cloneIndex);
+        cloneRequest.setResizeType(ResizeType.CLONE);
+        cloneRequest.timeout(TimeValue.timeValueMinutes(10));
+        // 명시적으로 레플리카 0으로 셋팅...? 이건 확인 해봐야 할듯
+        cloneRequest.getTargetIndexRequest().settings(
+                Settings.builder()
+                        .put("index.number_of_replicas", 0) // 레플리카 0
+                        .put("index.blocks.write", true ) // 읽기 전용
+        );
+
+        // sync 방식
+        ResizeResponse cloneResponse = client.indices().clone(cloneRequest, RequestOptions.DEFAULT);
+        // async 방식
+        // client.indices().cloneAsync(request, RequestOptions.DEFAULT,listener);
+
+        // 정상적으로 클론 되었는지 확인
+        boolean acknowledged = cloneResponse.isAcknowledged(); // 모든 노드가 요청 승인 되었는지
+        boolean shardsAcked = cloneResponse.isShardsAcknowledged(); // 시간이 초과되기 전에 인덱스의 각 샤드에 대해 필요한 수의 샤드 복사본이 시작되었는지 여부
+        return acknowledged;
+    }
+
+    public boolean splitIndexing(RestHighLevelClient client, String cloneIndex, String splitIndex) throws IOException, InterruptedException {
+        ResizeRequest splitRequest = new ResizeRequest(cloneIndex, splitIndex);
+        splitRequest.setResizeType(ResizeType.SPLIT);
+        splitRequest.timeout(TimeValue.timeValueMinutes(1));
+
+        // 일단 40개로 해보자
+        splitRequest.getTargetIndexRequest().settings(
+                Settings.builder()
+                        .put("index.number_of_shards", 40) // 레플리카 0
+                        .put("index.blocks.write", true ) // 읽기 전용
+        );
+        client.indices().split(splitRequest, RequestOptions.DEFAULT);
+
+        // cluster level 체크...
+        // 정상적으로 전부 split & relocating 되었는지  확인
+        // 예시: GET /_cluster/health/s-prod-split?level=shards
+        boolean check = false;
+        while(!check){
+            ClusterHealthRequest request = new ClusterHealthRequest(splitIndex);
+            request.level(ClusterHealthRequest.Level.SHARDS);
+            ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
+
+            if(response.getRelocatingShards() > 0){
+                Thread.sleep(1000);
+            }else{
+                check = true;
+            }
+        }
+
+        return check;
+    }
+
+    public String reformReindexing(RestHighLevelClient client, String baseId, String sourceIndex, String destIndex, int reindexBatchSize, float reindexRequestPerSec) throws IOException, InterruptedException {
+        String cloneIndex = baseId + "-clone";
+        String splitIndex = sourceIndex + "-split";
+
+
+        // TODO: 인덱스 클론, 스플릿 시 시간 측정 필요
+        // 클론, 스플릿하기 전에 sourceIndex를 읽기전용 인덱스로 변경 필요
+        makeReadOnlyIndex(client, sourceIndex, true);
+
+        // 1. 원본 인덱스를 clone
+        // cloneIndexing(client, sourceIndex, cloneIndex);
+
+        // 2. 클론된 인덱스를 split하여 primary shard 수를 늘림
+        // splitIndexing(client, cloneIndex, splitIndex);
+        splitIndexing(client, sourceIndex, splitIndex);
+
+        //  3. split된 인덱스를 source index로 삼아 reindex, reindex 명령에 "?slices=auto"를 지정
+        // reindex request 설정 세팅
+        ReindexRequest reindexRequest = new ReindexRequest();
+        if(reindexRequestPerSec > 0) reindexRequest.setRequestsPerSecond(reindexRequestPerSec); // 추가
+        reindexRequest.setSourceIndices(splitIndex);
+        reindexRequest.setDestIndex(destIndex);
+        reindexRequest.setRefresh(false);
+        reindexRequest.setSourceBatchSize(reindexBatchSize);
+
+        // reindex 호출
+        TaskSubmissionResponse reindexSubmission = client.submitReindexTask(reindexRequest, RequestOptions.DEFAULT);
+
+        // 작업 번호
+        String taskId = reindexSubmission.getTask();
+        logger.info("taskId : {} - source : {} -> dest : {}", taskId, sourceIndex, destIndex);
+
+        makeReadOnlyIndex(client, sourceIndex, false);
+
+        return taskId;
     }
 
     public void stopReindexing(UUID clusterId, Collection collection, IndexingStatus indexingStatus) throws IOException {

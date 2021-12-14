@@ -9,6 +9,8 @@ server:
 #    trust-store: dsearch.pkcs12
 #    trust-store-password: ${DSEARCH_PASSWORD:''}
 spring:
+  profiles:
+    active: prod
   h2:
     console:
       enabled: true

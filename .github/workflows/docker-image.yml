@@ -12,8 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the Docker image
-    - run: version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
-    - run: docker build . --file Dockerfile --tag my-image-name:$version
+    - run: 
+        version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
+        docker build . --file Dockerfile --tag my-image-name:$version
+        
+
     
     
     

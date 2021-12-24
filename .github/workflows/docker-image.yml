@@ -11,10 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: project name
+      run: image="${{ github.event.repository.name }}"
+    - name: extract version for pom.xml
+      run: version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
     - name: Build the Docker image
-      run: 
-        version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
-        docker build . --file Dockerfile --tag my-image-name:$version
+      run: docker build . --file Dockerfile --tag my-image-name:$version
+      
+      
+        
         
 
     

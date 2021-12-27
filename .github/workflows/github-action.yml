@@ -48,7 +48,9 @@ jobs:
       uses: skjolber/maven-cache-github-action@v1.1
       with:
         step: save
-      
+    
+    - name: file listing
+      run: ls -al
       
 #     ghcr.io 로그인
     - name: Docker Login

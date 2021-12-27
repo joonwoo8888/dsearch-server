@@ -42,11 +42,11 @@ jobs:
       run: echo "VERSION=$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)" >> $GITHUB_ENV
 #     도커 이미지 빌드
     - name: Build Docker image
-      run: docker build . --file Dockerfile --tag "$GITHUB_REPOSITORY:${{ env.VERSION }}"
+      run: docker build . --file Dockerfile --tag "ghcr.io/danawalab/$GITHUB_REPOSITORY:${{ env.VERSION }}"
     - name: ghcr.io login
       run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u joonwoo8888 --password-stdin
     - name: publish Docker image
-      run: docker push $GITHUB_REPOSITORY:${{ env.VERSION }}
+      run: docker push ghcr.io/danawalab/$GITHUB_REPOSITORY:${{ env.VERSION }}
       
 
       

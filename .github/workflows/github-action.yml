@@ -19,6 +19,7 @@ jobs:
       uses: actions/setup-java@v2.5.0
       with:
         java-version: 1.8
+        distribution: jdk
 #     java maven 캐시 불러움
     - name: Maven Cache
       uses: skjolber/maven-cache-github-action@v1.1

@@ -41,10 +41,13 @@ jobs:
     - name: extract version for pom.xml
       run: echo "VERSION=$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)" >> $GITHUB_ENV
 #     도커 이미지 빌드
-    - name: Build the Docker image
+    - name: Build Docker image
       run: docker build . --file Dockerfile --tag "$GITHUB_REPOSITORY:${{ env.VERSION }}"
-    - name: end
-      run: echo "end"
+    - name: ghcr.io login
+      run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u joonwoo8888 --password-stdin
+    - name: publish Docker image
+      run: docker push $GITHUB_REPOSITORY:${{ env.VERSION }}
+      
 
       
       

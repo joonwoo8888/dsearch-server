@@ -10,11 +10,9 @@ WORKDIR /app
 
 RUN mkdir -p /data/indexFile
 
-ARG TARGET
 ARG PROJECT_NAME
 ARG VERSION
 
-COPY $TARGET/$PROJECT_NAME-$version.jar $PROJECT_NAME-$version.jar
+COPY target/$PROJECT_NAME-$version.jar $PROJECT_NAME-$version.jar
 
 CMD java -jar $PROJECT_NAME-$version.jar
-

@@ -13,6 +13,6 @@ RUN mkdir -p /data/indexFile
 ARG PROJECT_NAME
 ARG VERSION
 
-COPY target/$PROJECT_NAME-$version.jar $PROJECT_NAME-$version.jar
+COPY target/${PROJECT_NAME}-${VERSION}.jar ${PROJECT_NAME}-${VERSION}.jar
 
-CMD java -jar $PROJECT_NAME-$version.jar
+CMD java -jar ${PROJECT_NAME}-${VERSION}.jar

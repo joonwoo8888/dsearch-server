@@ -53,10 +53,13 @@ jobs:
     - name: Docker Build & Push Action
       uses: mr-smithers-excellent/docker-build-push@v5.6
       with:
-        image: danawalab/dsearch-server-test
+        image: dsearch-server-test
         tags: ${{env.VERSION}}
         registry: ghcr.io
-      
+        buildArgs: version=${{env.VERSION}} project=dsearch-server 
+    
+        
+        
       
 #     java maven 캐시 저장
     - name: Maven Cache

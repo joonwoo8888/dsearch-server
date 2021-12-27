@@ -65,9 +65,7 @@ jobs:
       uses: mr-smithers-excellent/docker-build-push@v5.6
       with:
         registry: ghcr.io
-        buildArgs: 
-          VERSION=${{env.VERSION}}
-          PROJECT_NAME=${{ env.DOCKER_IMAGE }}
+        buildArgs: VERSION=${{env.VERSION}},PROJECT_NAME=${{ env.DOCKER_IMAGE }}
         image: ${{ env.DOCKER_IMAGE }}
         tags: ${{ env.VERSION }}
         

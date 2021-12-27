@@ -47,7 +47,7 @@ jobs:
       with:
         registry: ghcr.io
         username: joonwoo8888
-        password: ${{ secret.CR_TOKEN }}
+        password: ${{ secrets.CR_TOKEN }}
 
 #     도커 이미지 빌드&저장
     - name: Docker Build & Push Action

@@ -65,7 +65,7 @@ jobs:
         registry: ghcr.io
         image: ${{ env.DOCKER_IMAGE }}
         tags: ${{ env.VERSION }}
-        buildArgs: VERSION="${{env.VERSION}}" PROJECT_NAME="${{ env.DOCKER_IMAGE }}"
+        buildArgs: VERSION=${{env.VERSION}} PROJECT_NAME=${{ env.DOCKER_IMAGE }}
           
   cleanup:
     needs: [ build ]

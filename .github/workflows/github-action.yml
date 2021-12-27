@@ -56,7 +56,7 @@ jobs:
         image: dsearch-server-test
         tags: ${{env.VERSION}}
         registry: ghcr.io
-        buildArgs: version=${{env.VERSION}} project=dsearch-server 
+        buildArgs: VERSION="${{env.VERSION}}" PROJECT_NAME="dsearch-server"
     
         
         

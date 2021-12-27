@@ -1,4 +1,6 @@
-name: Docker Image CI
+# 액션 이름
+name: Dsearch Server CI
+
 # 마스터 푸시, 풀 리퀘스트 이벤트 발생하면 아래 잡들을 실행함.
 on:
   push:
@@ -9,6 +11,7 @@ on:
 jobs:
 # 빌드 잡 정의시작.
   build:
+  
 #   실행 플랫폼은 ubuntu사용, runs: windows, mac os, ubuntu 있음.
     runs-on: ubuntu-latest
     steps:
@@ -27,13 +30,11 @@ jobs:
     - name: Maven Cache
       uses: skjolber/maven-cache-github-action@v1.1
       with:
-         step: restore
+        step: restore
 
 #     Maven 빌드
     - name: Spring Boot Build with Maven
       run: mvn package -Dskip.test=true
-
-
 
 #     pom.xml 버전을 추출합니다.
     - name: extract version for pom.xml
@@ -61,7 +62,7 @@ jobs:
     - name: Maven Cache
       uses: skjolber/maven-cache-github-action@v1.1
       with:
-         step: save      
+        step: save      
       
         
         

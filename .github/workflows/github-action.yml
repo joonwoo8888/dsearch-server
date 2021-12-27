@@ -30,7 +30,6 @@ jobs:
     - name: Spring Boot Build with Maven
       run: mvn package -Dskip.test=true
 
-
 #     java maven 캐시 저장
     - name: Maven Cache
       uses: skjolber/maven-cache-github-action@v1.1
@@ -38,16 +37,15 @@ jobs:
          step: save
 
 
+#     버전을 추출합니다.
+    - name: extract version for pom.xml
+      run: echo "VERSION=$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)" >> $GITHUB_ENV
+#     도커 이미지 빌드
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag "${{ env.VERSION }}:$GITHUB_REPOSITORY"
+    - name: end
+      run: echo "end"
 
-#     프로젝트명 
-#     - name: project name
-#       run: image="${{ github.event.repository.name }}"
-#     - name: extract version for pom.xml
-#       run: version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
-#     - name: Build the Docker image
-#       run: docker build . --file Dockerfile --tag $image:$version
-#     - name: end
-#       run: echo "$image:$tag"
       
       
         

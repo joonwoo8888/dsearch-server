@@ -1,0 +1,59 @@
+name: Docker Image CI
+# 마스터 푸시, 풀 리퀘스트 이벤트 발생하면 아래 잡들을 실행함.
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+# 빌드 잡 정의시작.
+  build:
+#   실행 플랫폼은 ubuntu사용, runs: windows, mac os, ubuntu 있음.
+    runs-on: ubuntu-latest
+    steps:
+#     소스코드 checkout
+    - uses: actions/checkout@v2
+#     JDK 활성화
+    - name: Setup Java JDK
+      uses: actions/setup-java@v2.5.0
+      with:
+        java-version: 1.8
+#     java maven 캐시 불러움
+    - name: Maven Cache
+      uses: skjolber/maven-cache-github-action@v1.1
+      with:
+         step: restore
+
+#     Maven 빌드
+    - name: Spring Boot Build with Maven
+      run: mvn package -Dskip.test=true
+
+
+#     java maven 캐시 저장
+    - name: Maven Cache
+      uses: skjolber/maven-cache-github-action@v1.1
+      with:
+         step: save
+
+
+
+#     프로젝트명 
+#     - name: project name
+#       run: image="${{ github.event.repository.name }}"
+#     - name: extract version for pom.xml
+#       run: version="$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)"
+#     - name: Build the Docker image
+#       run: docker build . --file Dockerfile --tag $image:$version
+#     - name: end
+#       run: echo "$image:$tag"
+      
+      
+        
+        
+
+    
+    
+    
+        
+

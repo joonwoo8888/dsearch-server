@@ -70,19 +70,3 @@ jobs:
         tags: ${{ env.VERSION }}
         
           
-  cleanup:
-    needs: [ build ]
-    name: Clean up docker images
-    runs-on: [ self-hosted, development ]
-    steps:
-      - name: Clean up docker images
-        run: echo "${{env.VERSION}}"
-      - name: Clean up docker images
-        run: docker rmi $(docker images --filter "before=${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}" --filter=reference="${{ env.DOCKER_IMAGE }}:*" -q)
-        
-
-    
-    
-    
-        
-

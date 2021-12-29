@@ -8,9 +8,9 @@ env:
 # 마스터 푸시, 풀 리퀘스트 이벤트 발생하면 아래 잡들을 실행함.
 on:
   push:
-    branches: [ master ]
+    branches: [ release/** ]
   pull_request:
-    branches: [ master ]
+    branches: [ release/** ]
 
 jobs:
 # 빌드 잡 정의시작.
@@ -38,7 +38,22 @@ jobs:
 #     pom.xml 버전을 추출합니다.
     - name: extract version for pom.xml
       run: echo "VERSION=$(grep -oPm2 "(?<=<version>)[^<]+" pom.xml | sed -n 2p)" >> $GITHUB_ENV
-
+      
+    - name: env branch
+      run: echo "${{ GITHUB_REF_NAME }}"
+      
+    - name: env branch split
+      run: echo "${{ GITHUB_REF_NAME }}"|cut -d '/' -f 2
+      
+      
+    - name: env repository
+      run: echo "${{ GITHUB_REPOSITORY }}"
+      
+    - name: env repository split
+      run: echo "${{ GITHUB_REPOSITORY }}"|cut -d '/' -f 2
+      
+      
+      
 #     Maven 빌드
     - name: Spring Boot Build with Maven
       run: mvn package -Dskip.test=true
@@ -52,21 +67,21 @@ jobs:
     - name: file listing
       run: ls -al
       
-#     ghcr.io 로그인
-    - name: Docker Login
-      uses: docker/login-action@v1.12.0
-      with:
-        registry: ghcr.io
-        username: joonwoo8888
-        password: ${{ secrets.CR_TOKEN }}
+# #     ghcr.io 로그인
+#     - name: Docker Login
+#       uses: docker/login-action@v1.12.0
+#       with:
+#         registry: ghcr.io
+#         username: joonwoo8888
+#         password: ${{ secrets.CR_TOKEN }}
 
-#     도커 이미지 빌드&저장
-    - name: Docker Build & Push Action
-      uses: mr-smithers-excellent/docker-build-push@v5.6
-      with:
-        registry: ghcr.io
-        buildArgs: VERSION=${{env.VERSION}},PROJECT_NAME=${{ env.DOCKER_IMAGE }}
-        image: ${{ env.DOCKER_IMAGE }}
-        tags: ${{ env.VERSION }}
+# #     도커 이미지 빌드&저장
+#     - name: Docker Build & Push Action
+#       uses: mr-smithers-excellent/docker-build-push@v5.6
+#       with:
+#         registry: ghcr.io
+#         buildArgs: VERSION=${{env.VERSION}},PROJECT_NAME=${{ env.DOCKER_IMAGE }}
+#         image: ${{ env.DOCKER_IMAGE }}
+#         tags: ${{ env.VERSION }}
         
           

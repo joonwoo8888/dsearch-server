@@ -9,6 +9,7 @@ env:
 jobs:
   tagging:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, "release")
     steps:
 #     소스 체크아웃
     - uses: actions/checkout@v2
